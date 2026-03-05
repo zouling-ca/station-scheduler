@@ -359,7 +359,7 @@ function render(){
     // List view
     html+=`<div class="list-section"><h3>Upcoming Vacations</h3>`;
     if(!state.vacations.length)html+=`<p style="color:#666;font-size:13px">No vacations scheduled</p>`;
-    state.vacations.forEach(v=>{const m=getMember(v.memberId);html+=`<div class="list-card vac"><div><div class="name">${m?.name||''}</div><div class="meta">${v.start} → ${v.end}</div>${v.notes?`<div class="notes">${v.notes}</div>`:''}</div><div style="display:flex;align-items:center;gap:8px"><span class="tag" style="background:var(--red-light);color:var(--red)">Shift ${m?.shift||''}</span><button class="delete-btn" onclick="deleteVacation('${v.id}')">${icons.trash}</button></div></div>`});
+    state.vacations.forEach(v=>{const m=getMember(v.memberId);html+=`<div class="list-card vac"><div><div class="name">${m?.name||''}</div><div class="meta">${v.start} → ${v.end}</div>${v.notes?`<div class="notes">${v.notes}</div>`:''}</div><div style="display:flex;align-items:center;gap:8px"><span class="tag" style="background:var(--red-light);color:var(--red)">${m?.shift||''}</span><button class="delete-btn" onclick="deleteVacation('${v.id}')">${icons.trash}</button></div></div>`});
     html+=`</div>`;
 
     html+=`<div class="list-section"><h3>Gear Cleaning Schedule</h3>`;
@@ -368,7 +368,7 @@ function render(){
     html+=`</div>`;
 
     html+=`<div class="list-section"><h3>Crew Roster</h3>`;
-    state.members.forEach(m=>{html+=`<div class="list-card member"><div><div class="name">${m.name}</div><div class="meta">${m.rank} · ${m.email}</div></div><span class="tag" style="background:rgba(255,255,255,.08);color:#aaa">Shift ${m.shift}</span></div>`});
+    state.members.forEach(m=>{html+=`<div class="list-card member"><div><div class="name">${m.name}</div><div class="meta">${m.rank} · ${m.email}</div></div><span class="tag" style="background:rgba(255,255,255,.08);color:#aaa">${m.shift}</span></div>`});
     html+=`</div>`;
   }
 
@@ -406,7 +406,7 @@ function renderModal(){
     title='Add Crew Member';
     body=`<div class="form-group"><label>Full Name</label><input type="text" id="mem-name" placeholder="e.g. FF. Johnson"></div>
     <div class="form-group"><label>Rank</label><select id="mem-rank">${["Probationary Firefighter","Firefighter","Captain","FPO","CTO","District Chief","Deputy Chief","Chief"].map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
-    <div class="form-group"><label>Shift</label><select id="mem-shift">${["A","B","C"].map(s=>`<option value="${s}">Shift ${s}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Fire Station</label><select id="mem-shift">${["Rodney","West Lorne","Dutton","Shedden","Talbotville"].map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
     <div class="form-group"><label>Email</label><input type="email" id="mem-email" placeholder="name@fd.gov"></div>
     <div class="form-actions"><button class="form-btn ghost" onclick="closeModal()">Cancel</button><button class="form-btn primary" onclick="addMember()">Add Member</button></div>`;
   }else if(m.type==='day'){
