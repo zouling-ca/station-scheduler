@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Station Scheduler — Fire Dept Vacation & Gear Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:#C41E3A;--red-light:rgba(196,30,58,.12);--red-glow:rgba(196,30,58,.35);
+    --blue:#2d7ff9;--blue-light:rgba(45,127,249,.12);
+    --green:#00c853;--orange:#ff9800;--purple:#9c27b0;
+    --bg:#0f0c14;--bg2:#1a1520;
+    --surface:rgba(255,255,255,.03);--border:rgba(255,255,255,.07);--border-light:rgba(255,255,255,.1);
+    --text:#e8e4ec;--text-muted:rgba(255,255,255,.4);--text-dim:rgba(255,255,255,.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:linear-gradient(165deg,var(--bg) 0%,var(--bg2) 40%,#1e1428 100%);color:var(--text);min-height:100vh;position:relative;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;opacity:.04;z-index:0;pointer-events:none;background-image:radial-gradient(circle at 20% 50%,var(--red) 0%,transparent 50%),radial-gradient(circle at 80% 20%,#ff6b35 0%,transparent 40%)}
+  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#444;border-radius:3px}
+  .app{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:20px 24px 40px}
+  .loading-overlay{position:fixed;inset:0;z-index:2000;background:rgba(15,12,20,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .3s}
+  .loading-overlay.hidden{opacity:0;pointer-events:none}
+  .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.1);border-top:3px solid var(--red);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:14px;color:rgba(255,255,255,.5);font-weight:500}
+  .toast-container{position:fixed;top:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:8px}
+  .toast{padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;animation:slideIn .3s ease;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+  .toast.success{background:#1b5e20}.toast.error{background:#b71c1c}.toast.info{background:#1a237e}
+  @keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px}
+  .logo{display:flex;align-items:center;gap:14}
+  .logo-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--red),#ff6b35);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px var(--red-glow);color:#fff}
+  .logo h1{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#fff}
+  .logo p{font-size:11px;color:var(--text-muted);font-family:'Space Mono',monospace;letter-spacing:.5px}
+  .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;border:none;cursor:pointer;transition:all .15s;letter-spacing:.2px;white-space:nowrap}
+  .btn-primary{background:var(--red);color:#fff}.btn-primary:hover{background:#a8182f}
+  .btn-blue{background:var(--blue-light);color:var(--blue);border:1px solid rgba(45,127,249,.2)}.btn-blue:hover{background:rgba(45,127,249,.2)}
+  .btn-ghost{background:rgba(255,255,255,.06);color:#aaa;border:1px solid var(--border-light)}.btn-ghost:hover{background:rgba(255,255,255,.1)}
+  .btn-icon{width:38px;height:38px;padding:0;justify-content:center;border-radius:10px;position:relative}
+  .badge{position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .action-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:10px}
+  .action-buttons{display:flex;gap:8px;flex-wrap:wrap}
+  .view-toggle{display:flex;gap:4px;background:rgba(255,255,255,.06);border-radius:8px;padding:3px}
+  .view-btn{padding:6px 14px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:transparent;color:#888;transition:all .15s}
+  .view-btn.active{background:rgba(255,255,255,.12);color:#fff}
+  .month-nav{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:24px}
+  .month-nav h2{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px;min-width:200px;text-align:center}
+  .month-nav .sub{font-size:13px;color:var(--text-dim);font-family:'Space Mono',monospace;text-align:center}
+  .legend{display:flex;gap:16px;margin-bottom:16px;justify-content:center;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:#aaa}
+  .legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .calendar{background:var(--surface);border-radius:16px;border:1px solid var(--border);overflow:hidden}
+  .cal-header{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cal-header-cell{padding:12px 0;text-align:center;font-size:11px;font-weight:700;color:var(--text-dim);font-family:'Space Mono',monospace;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.06)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cal-cell{min-height:100px;padding:6px 8px;border-right:1px solid rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;position:relative}
+  .cal-cell.empty{background:rgba(0,0,0,.1)}
+  .cal-cell.has-events{cursor:pointer;background:rgba(255,255,255,.015)}.cal-cell.has-events:hover{background:rgba(255,255,255,.04)}
+  .cal-cell.today{background:rgba(0,200,83,.05)}
+  .cal-day{font-size:13px;font-weight:500;color:rgba(255,255,255,.6);margin-bottom:4px}
+  .cal-cell.today .cal-day{font-weight:800;color:var(--green)}
+  .today-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);margin-left:4px;vertical-align:middle}
+  .cal-event{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px}
+  .cal-event.vac{background:rgba(196,30,58,.15);color:#ff6b6b}
+  .cal-event.pickup{background:rgba(45,127,249,.15);color:#6ba3ff}
+  .cal-event.prep{background:rgba(255,152,0,.15);color:#ffb74d}
+  .cal-event.return{background:rgba(156,39,176,.15);color:#ce93d8}
+  .cal-more{font-size:9px;color:var(--text-dim);padding-left:4px}
+  .list-section h3{font-size:15px;font-weight:700;color:#fff;margin:0 0 10px}
+  .list-section+.list-section{margin-top:20px}
+  .list-card{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-radius:12px;margin-bottom:8px}
+  .list-card.vac{background:rgba(196,30,58,.06);border:1px solid rgba(196,30,58,.12)}
+  .list-card.gear{background:rgba(45,127,249,.06);border:1px solid rgba(45,127,249,.12)}
+  .list-card.member{background:var(--surface);border:1px solid var(--border)}
+  .list-card .name{font-size:14px;font-weight:700;color:#fff}
+  .list-card .meta{font-size:12px;color:#aaa;margin-top:2px}
+  .list-card .notes{font-size:11px;color:#888;margin-top:2px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+  .delete-btn{background:rgba(255,0,0,.1);border:none;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#ff6b6b;transition:all .15s}
+  .delete-btn:hover{background:rgba(255,0,0,.2)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px}
+  .stat-card{padding:16px 18px;border-radius:12px;background:var(--surface);border:1px solid var(--border)}
+  .stat-value{font-size:24px;font-weight:800;font-family:'Space Mono',monospace}
+  .stat-label{font-size:11px;color:var(--text-dim);font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+  .modal-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);animation:fadeIn .2s ease}
+  .modal{background:#fff;border-radius:16px;width:500px;max-width:94vw;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 60px rgba(0,0,0,.18);animation:slideUp .25s ease;color:#333}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px 16px;border-bottom:1px solid #eee}
+  .modal-head h3{font-size:17px;font-weight:700;color:#1a1a2e}
+  .modal-close{background:#f5f5f5;border:none;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#666;font-size:18px;transition:all .15s}
+  .modal-close:hover{background:#eee}
+  .modal-body{padding:20px 24px 24px;overflow-y:auto;flex:1}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:5px}
+  .form-group input,.form-group select{width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid #ddd;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
+  .form-group input:focus,.form-group select:focus{border-color:var(--red)}
+  .form-hint{font-size:11px;color:#888;line-height:1.5;margin:8px 0 16px}
+  .form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+  .form-btn{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;border:none;cursor:pointer;transition:all .15s}
+  .form-btn.primary{background:var(--red);color:#fff}.form-btn.primary:hover{background:#a8182f}
+  .form-btn.primary:disabled{background:#eee;color:#aaa;cursor:not-allowed}
+  .form-btn.blue{background:var(--blue);color:#fff}
+  .form-btn.ghost{background:#f0f0f0;color:#333;border:1px solid #ddd}.form-btn.ghost:hover{background:#e4e4e4}
+  .schedule-preview{background:#f8f9fa;border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin:12px 0}
+  .schedule-preview h4{font-size:12px;font-weight:700;color:#333;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+  .schedule-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px}
+  .schedule-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .schedule-date{font-weight:700;color:#333;min-width:90px}
+  .schedule-desc{color:#666}
+  .day-section h4{font-size:13px;font-weight:700;margin-bottom:8px}
+  .day-section h4.vac-title{color:var(--red)}.day-section h4.pickup-title{color:var(--blue)}.day-section h4.prep-title{color:var(--orange)}.day-section h4.return-title{color:var(--purple)}
+  .day-card{padding:10px 14px;border-radius:10px;margin-bottom:6px}
+  .day-card.vac{background:#fff5f5;border:1px solid #fee}
+  .day-card.pickup{background:#f0f6ff;border:1px solid #ddeeff}
+  .day-card.prep{background:#fff8e1;border:1px solid #ffe0b2}
+  .day-card.return{background:#f3e5f5;border:1px solid #e1bee7}
+  .day-card .dc-name{font-weight:700;font-size:13px;color:#333}
+  .day-card .dc-meta{font-size:12px;color:#888}.day-card .dc-notes{font-size:11px;color:#aaa;margin-top:2px}
+  .notif-panel{position:absolute;top:80px;right:24px;width:360px;max-height:400px;overflow-y:auto;background:#222;border:1px solid #333;border-radius:14px;padding:16px;z-index:100;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .notif-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .notif-head h4{font-size:14px;font-weight:700;color:#fff}
+  .notif-mark{background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;font-weight:600;font-family:'DM Sans',sans-serif}
+  .notif-item{padding:10px 12px;border-radius:8px;margin-bottom:6px;border-left:3px solid transparent}
+  .notif-item.unread{background:rgba(196,30,58,.08)}
+  .notif-item.unread.vacation{border-left-color:var(--red)}.notif-item.unread.gear{border-left-color:var(--blue)}.notif-item.unread.info{border-left-color:#888}.notif-item.unread.return{border-left-color:var(--purple)}
+  .notif-msg{font-size:12px;color:#ccc;line-height:1.4}.notif-time{font-size:10px;color:#666;margin-top:4px}
+  .notif-empty{color:#666;font-size:13px;text-align:center;padding:20px}
+  .setting-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer}
+  .checkbox{width:20px;height:20px;border-radius:5px;border:2px solid #ddd;display:flex;align-items:center;justify-content:center;transition:all .15s;cursor:pointer;flex-shrink:0}
+  .checkbox.checked{background:var(--red);border-color:var(--red)}.checkbox svg{color:#fff}
+  .setting-label{font-size:13px;color:#333}
+  .export-btn{padding:14px 18px;border-radius:10px;border:1px solid #eee;background:#fafafa;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:all .15s;width:100%;margin-bottom:10px}
+  .export-btn:hover{background:#f0f0f0}
+  .export-icon{font-size:22px}.export-title{font-weight:700;font-size:13px;color:#333}.export-desc{font-size:11px;color:#888}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  @media(max-width:768px){.stats{grid-template-columns:repeat(2,1fr)}.cal-cell{min-height:70px;padding:4px}.cal-event{font-size:8px;padding:1px 4px}.month-nav h2{font-size:20px;min-width:150px}}
+  @media(max-width:480px){.app{padding:12px 12px 30px}.cal-cell{min-height:56px}.cal-header-cell{font-size:9px;padding:8px 0}.stats{grid-template-columns:repeat(2,1fr);gap:8px}}
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div><div class="loading-text">Loading station data...</div></div>
+<div class="toast-container" id="toastContainer"></div>
+<div class="app" id="app"></div>
+
+<script>
+const API_BASE='/api';
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS_SHORT=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const GEAR_VENDORS=["SafeClean Pro","GearWash Inc.","SANIGEAR"];
+
+let state={
+  year:new Date().getFullYear(), month:new Date().getMonth(), view:"calendar",
+  members:[], vacations:[], gearCleanings:[], notifications:[],
+  notifSettings:{emailOnVacation:true,emailOnGearCleaning:true,emailOnReturn:true,vacationAdded:true,gearScheduled:true,reminderDaysBefore:2},
+  modal:null, notifPanel:false, loading:true,
+};
+
+// ===== HELPERS =====
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function fmtDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function parseDate(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function datesInRange(start,end){const dates=[];let cur=new Date(start);while(cur<=end){dates.push(fmtDate(cur));cur.setDate(cur.getDate()+1)}return dates}
+function getMember(id){return state.members.find(m=>m.id===id)}
+function getVacsForDate(ds){return state.vacations.filter(v=>datesInRange(parseDate(v.start),parseDate(v.end)).includes(ds))}
+function isToday(d){const t=new Date();return d===t.getDate()&&state.month===t.getMonth()&&state.year===t.getFullYear()}
+function getDateStr(d){return `${state.year}-${String(state.month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`}
+function dayName(ds){return DAYS_SHORT[parseDate(ds).getDay()]}
+function prettyDate(ds){const d=parseDate(ds);return `${DAYS_SHORT[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`}
+
+// ===== FRIDAY SCHEDULING LOGIC =====
+// Get the Friday before or on a given date
+// If date is Friday(5) or Saturday(6), pickup is that Friday
+// Otherwise, pickup is the previous Friday
+function getPickupFriday(vacStartStr) {
+  const vacStart = parseDate(vacStartStr);
+  const dow = vacStart.getDay(); // 0=Sun ... 5=Fri, 6=Sat
+  const d = new Date(vacStart);
+  if (dow === 5) {
+    // Already Friday — pickup is this day
+    return fmtDate(d);
+  } else if (dow === 6) {
+    // Saturday — pickup is yesterday (Friday)
+    d.setDate(d.getDate() - 1);
+    return fmtDate(d);
+  } else {
+    // Sun(0)–Thu(4) — go back to previous Friday
+    const daysBack = (dow + 2) % 7; // Sun=2, Mon=3, Tue=4, Wed=5, Thu=6
+    d.setDate(d.getDate() - daysBack);
+    return fmtDate(d);
+  }
+}
+
+function getPrepByDate(pickupDateStr) {
+  const d = parseDate(pickupDateStr);
+  d.setDate(d.getDate() - 1); // Thursday before pickup Friday
+  return fmtDate(d);
+}
+
+function getReturnDate(pickupDateStr) {
+  const d = parseDate(pickupDateStr);
+  d.setDate(d.getDate() + 7); // Following Friday
+  return fmtDate(d);
+}
+
+// Get gear events for a specific date
+function getGearPickupsForDate(ds){return state.gearCleanings.filter(g=>g.pickupDate===ds)}
+function getGearPrepsForDate(ds){return state.gearCleanings.filter(g=>g.prepByDate===ds)}
+function getGearReturnsForDate(ds){return state.gearCleanings.filter(g=>g.returnDate===ds)}
+
+function addNotification(msg,type="info"){
+  state.notifications.unshift({id:genId(),msg,type,time:new Date().toLocaleTimeString(),read:false});
+}
+function showToast(msg,type="info"){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;c.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+// ===== API =====
+async function api(endpoint,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body)opts.body=JSON.stringify(body);
+  const res=await fetch(`${API_BASE}/${endpoint}`,opts);
+  if(!res.ok){const err=await res.text();throw new Error(err)}
+  return res.json();
+}
+
+async function loadAllData(){
+  try{
+    const[members,vacations,gear]=await Promise.all([api('api-members'),api('api-vacations'),api('api-gear')]);
+    state.members=members.map(m=>({id:m.id,name:m.name,rank:m.rank,shift:m.shift,email:m.email}));
+    state.vacations=vacations.map(v=>({id:v.id,memberId:v.member_id,start:v.start_date,end:v.end_date,notes:v.notes}));
+    state.gearCleanings=gear.map(g=>({id:g.id,memberId:g.member_id,pickupDate:g.pickup_date,prepByDate:g.prep_by_date,returnDate:g.return_date,vendor:g.vendor,status:g.status,returnNotified:g.return_notified}));
+    state.loading=false;
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    checkReturnReminders();
+    render();
+  }catch(err){
+    console.error('Failed to load:',err);
+    showToast('Failed to load data — check Supabase config','error');
+    state.loading=false;document.getElementById('loadingOverlay').classList.add('hidden');render();
+  }
+}
+
+async function sendEmail(to,subject,htmlBody){
+  if(!to)return;
+  try{await api('api-send-email','POST',{to,subject,html:htmlBody});showToast(`Email sent to ${to}`,'success')}
+  catch(err){console.error('Email failed:',err);showToast('Email failed — check Resend config','error')}
+}
+
+// Check for gear returns due today and send reminders
+async function checkReturnReminders(){
+  const today=fmtDate(new Date());
+  for(const g of state.gearCleanings){
+    if(g.returnDate===today && !g.returnNotified){
+      const m=getMember(g.memberId);
+      if(m){
+        addNotification(`📦 Gear return today for ${m.name} — should be back at the fire hall`,'return');
+        if(state.notifSettings.emailOnReturn && m.email){
+          sendEmail(m.email,`Gear Return Today — ${prettyDate(today)}`,
+            `<div style="font-family:sans-serif;padding:20px;max-width:600px">
+              <h2 style="color:#9c27b0">📦 Gear Return Reminder</h2>
+              <p>Hi ${m.name},</p>
+              <p>Your bunker gear cleaned by <strong>${g.vendor}</strong> is scheduled to be <strong>returned today (${prettyDate(today)})</strong> via the Friday van run.</p>
+              <p>Please ensure your gear is collected from the <strong>fire hall</strong> and checked back into service.</p>
+              <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+              <p style="color:#999;font-size:12px">Station Scheduler — Fire Department Vacation & Gear Tracker</p>
+            </div>`);
+        }
+        // Mark as notified in DB
+        try{await api(`api-gear?id=${g.id}`,'PATCH',{return_notified:true});g.returnNotified=true}catch(e){console.error(e)}
+      }
+    }
+  }
+}
+
+// ===== ICONS =====
+const icons={
+  fire:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`,
+  plus:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  shield:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+  user:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  bell:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+  gearIcon:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  download:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+  chevL:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
+  chevR:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`,
+  check:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  trash:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+  x:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+};
+
+// ===== RENDER =====
+function render(){
+  const app=document.getElementById('app');
+  const unread=state.notifications.filter(n=>!n.read).length;
+  const firstDay=new Date(state.year,state.month,1).getDay();
+  const daysInMonth=new Date(state.year,state.month+1,0).getDate();
+  let html='';
+
+  html+=`<header class="header"><div class="logo"><div class="logo-icon">${icons.fire}</div><div><h1>Station Scheduler</h1><p>VACATION & BUNKER GEAR TRACKER</p></div></div>
+    <div class="header-actions"><button class="btn btn-ghost btn-icon" onclick="toggleNotifs()">${icons.bell}${unread>0?`<span class="badge">${unread}</span>`:''}</button>
+    <button class="btn btn-ghost" onclick="openModal('settings')">${icons.gearIcon} Settings</button>
+    <button class="btn btn-ghost" onclick="openModal('export')">${icons.download} Export</button></div></header>`;
+
+  if(state.notifPanel){
+    html+=`<div class="notif-panel"><div class="notif-head"><h4>Notifications</h4>${state.notifications.length>0?`<button class="notif-mark" onclick="markAllRead()">Mark all read</button>`:''}</div>
+    ${state.notifications.length===0?'<p class="notif-empty">No notifications yet</p>':state.notifications.slice(0,15).map(n=>`<div class="notif-item ${n.read?'':'unread '+n.type}"><p class="notif-msg">${n.msg}</p><p class="notif-time">${n.time}</p></div>`).join('')}</div>`;
+  }
+
+  html+=`<div class="action-bar"><div class="action-buttons">
+    <button class="btn btn-primary" onclick="openModal('vacation')">${icons.plus} Add Vacation</button>
+    <button class="btn btn-blue" onclick="openModal('gear')">${icons.shield} Schedule Cleaning</button>
+    <button class="btn btn-ghost" onclick="openModal('member')">${icons.user} Add Member</button>
+  </div><div class="view-toggle">
+    <button class="view-btn ${state.view==='calendar'?'active':''}" onclick="setView('calendar')">Calendar</button>
+    <button class="view-btn ${state.view==='list'?'active':''}" onclick="setView('list')">List View</button>
+  </div></div>`;
+
+  html+=`<div class="month-nav"><button class="btn btn-ghost btn-icon" onclick="prevMonth()">${icons.chevL}</button>
+    <div><h2>${MONTHS[state.month]}</h2><div class="sub">${state.year}</div></div>
+    <button class="btn btn-ghost btn-icon" onclick="nextMonth()">${icons.chevR}</button></div>`;
+
+  html+=`<div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>Vacation</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--orange)"></span>Gear Prep (Thu)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--blue)"></span>Pickup (Fri)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--purple)"></span>Return (Fri)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>Today</div>
+  </div>`;
+
+  if(state.view==='calendar'){
+    html+=`<div class="calendar"><div class="cal-header">${DAYS_SHORT.map(d=>`<div class="cal-header-cell">${d}</div>`).join('')}</div><div class="cal-grid">`;
+    for(let i=0;i<firstDay;i++)html+=`<div class="cal-cell empty"></div>`;
+    for(let d=1;d<=daysInMonth;d++){
+      const ds=getDateStr(d);
+      const vacs=getVacsForDate(ds);
+      const pickups=getGearPickupsForDate(ds);
+      const preps=getGearPrepsForDate(ds);
+      const returns=getGearReturnsForDate(ds);
+      const total=vacs.length+pickups.length+preps.length+returns.length;
+      const has=total>0;
+      const td=isToday(d);
+      html+=`<div class="cal-cell${has?' has-events':''}${td?' today':''}" ${has?`onclick="openModal('day','${ds}')"`:''}>`;
+      html+=`<div class="cal-day">${d}${td?'<span class="today-dot"></span>':''}</div>`;
+      let shown=0;
+      vacs.slice(0,2).forEach(v=>{const m=getMember(v.memberId);html+=`<div class="cal-event vac">🏖 ${m?m.name.split(' ').pop():'?'}</div>`;shown++});
+      preps.slice(0,1).forEach(g=>{if(shown<3){const m=getMember(g.memberId);html+=`<div class="cal-event prep">📋 Prep ${m?m.name.split(' ').pop():''}</div>`;shown++}});
+      pickups.slice(0,1).forEach(g=>{if(shown<3){const m=getMember(g.memberId);html+=`<div class="cal-event pickup">🚐 Pickup ${m?m.name.split(' ').pop():''}</div>`;shown++}});
+      returns.slice(0,1).forEach(g=>{if(shown<3){const m=getMember(g.memberId);html+=`<div class="cal-event return">📦 Return ${m?m.name.split(' ').pop():''}</div>`;shown++}});
+      if(total>shown)html+=`<div class="cal-more">+${total-shown} more</div>`;
+      html+=`</div>`;
+    }
+    html+=`</div></div>`;
+  } else {
+    // List view
+    html+=`<div class="list-section"><h3>Upcoming Vacations</h3>`;
+    if(!state.vacations.length)html+=`<p style="color:#666;font-size:13px">No vacations scheduled</p>`;
+    state.vacations.forEach(v=>{const m=getMember(v.memberId);html+=`<div class="list-card vac"><div><div class="name">${m?.name||''}</div><div class="meta">${v.start} → ${v.end}</div>${v.notes?`<div class="notes">${v.notes}</div>`:''}</div><div style="display:flex;align-items:center;gap:8px"><span class="tag" style="background:var(--red-light);color:var(--red)">Shift ${m?.shift||''}</span><button class="delete-btn" onclick="deleteVacation('${v.id}')">${icons.trash}</button></div></div>`});
+    html+=`</div>`;
+
+    html+=`<div class="list-section"><h3>Gear Cleaning Schedule</h3>`;
+    if(!state.gearCleanings.length)html+=`<p style="color:#666;font-size:13px">No cleanings scheduled</p>`;
+    state.gearCleanings.forEach(g=>{const m=getMember(g.memberId);html+=`<div class="list-card gear"><div><div class="name">${m?.name||''}</div><div class="meta">📋 Prep: ${g.prepByDate} (Thu) → 🚐 Pickup: ${g.pickupDate} (Fri) → 📦 Return: ${g.returnDate} (Fri)</div><div class="notes">${g.vendor} · ${g.status}</div></div><span class="tag" style="background:var(--blue-light);color:var(--blue)">${g.status}</span></div>`});
+    html+=`</div>`;
+
+    html+=`<div class="list-section"><h3>Crew Roster</h3>`;
+    state.members.forEach(m=>{html+=`<div class="list-card member"><div><div class="name">${m.name}</div><div class="meta">${m.rank} · ${m.email}</div></div><span class="tag" style="background:rgba(255,255,255,.08);color:#aaa">Shift ${m.shift}</span></div>`});
+    html+=`</div>`;
+  }
+
+  html+=`<div class="stats">
+    <div class="stat-card"><div class="stat-value" style="color:var(--red)">${state.vacations.length}</div><div class="stat-label">Active Vacations</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${state.gearCleanings.length}</div><div class="stat-label">Gear Cleanings</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--green)">${state.members.length}</div><div class="stat-label">Crew Members</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${state.notifications.length}</div><div class="stat-label">Notifications</div></div>
+  </div>`;
+
+  if(state.modal)html+=renderModal();
+  app.innerHTML=html;
+}
+
+function renderModal(){
+  const m=state.modal;let title='',body='';
+
+  if(m.type==='vacation'){
+    title='Schedule Vacation';
+    body=`<div class="form-group"><label>Member</label><select id="vac-member" onchange="updateVacPreview()"><option value="">Select member...</option>${state.members.map(m=>`<option value="${m.id}">${m.name} — ${m.rank}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Start Date</label><input type="date" id="vac-start" onchange="updateVacPreview()"></div>
+    <div class="form-group"><label>End Date</label><input type="date" id="vac-end" onchange="updateVacPreview()"></div>
+    <div class="form-group"><label>Notes</label><input type="text" id="vac-notes" placeholder="Optional notes..."></div>
+    <div id="vac-preview"></div>
+    <p class="form-hint">📧 The firefighter will receive emails about gear prep, pickup, and return dates.</p>
+    <div class="form-actions"><button class="form-btn ghost" onclick="closeModal()">Cancel</button><button class="form-btn primary" onclick="addVacation()">Add Vacation</button></div>`;
+  }else if(m.type==='gear'){
+    title='Schedule Gear Cleaning';
+    body=`<div class="form-group"><label>Member</label><select id="gear-member"><option value="">Select member...</option>${state.members.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Pickup Friday</label><input type="date" id="gear-pickup"></div>
+    <div class="form-group"><label>Vendor</label><select id="gear-vendor">${GEAR_VENDORS.map(v=>`<option value="${v}">${v}</option>`).join('')}</select></div>
+    <p class="form-hint">Prep by: Thursday before pickup. Return: following Friday.</p>
+    <div class="form-actions"><button class="form-btn ghost" onclick="closeModal()">Cancel</button><button class="form-btn blue" onclick="addGear()">Schedule</button></div>`;
+  }else if(m.type==='member'){
+    title='Add Crew Member';
+    body=`<div class="form-group"><label>Full Name</label><input type="text" id="mem-name" placeholder="e.g. FF. Johnson"></div>
+    <div class="form-group"><label>Rank</label><select id="mem-rank">${["Firefighter","Engineer","Lieutenant","Captain","Battalion Chief"].map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Shift</label><select id="mem-shift">${["A","B","C"].map(s=>`<option value="${s}">Shift ${s}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Email</label><input type="email" id="mem-email" placeholder="name@fd.gov"></div>
+    <div class="form-actions"><button class="form-btn ghost" onclick="closeModal()">Cancel</button><button class="form-btn primary" onclick="addMember()">Add Member</button></div>`;
+  }else if(m.type==='day'){
+    const ds=m.data;
+    const vacs=getVacsForDate(ds),pickups=getGearPickupsForDate(ds),preps=getGearPrepsForDate(ds),returns=getGearReturnsForDate(ds);
+    title=`${prettyDate(ds)}`;body='';
+    if(preps.length){body+=`<div class="day-section" style="margin-bottom:14px"><h4 class="prep-title">📋 Gear Prep — Ready by Thursday Evening</h4>`;preps.forEach(g=>{const mm=getMember(g.memberId);body+=`<div class="day-card prep"><div class="dc-name">${mm?.name||''}</div><div class="dc-meta">Leave gear at the usual doors for ${g.vendor} pickup tomorrow (Friday)</div></div>`});body+=`</div>`}
+    if(pickups.length){body+=`<div class="day-section" style="margin-bottom:14px"><h4 class="pickup-title">🚐 Gear Pickup — Friday Van Run</h4>`;pickups.forEach(g=>{const mm=getMember(g.memberId);body+=`<div class="day-card pickup"><div class="dc-name">${mm?.name||''}</div><div class="dc-meta">${g.vendor} picks up · Returns ${prettyDate(g.returnDate)}</div></div>`});body+=`</div>`}
+    if(vacs.length){body+=`<div class="day-section" style="margin-bottom:14px"><h4 class="vac-title">🏖️ On Vacation</h4>`;vacs.forEach(v=>{const mm=getMember(v.memberId);body+=`<div class="day-card vac"><div class="dc-name">${mm?.name||''}</div><div class="dc-meta">${v.start} → ${v.end}</div>${v.notes?`<div class="dc-notes">${v.notes}</div>`:''}</div>`});body+=`</div>`}
+    if(returns.length){body+=`<div class="day-section"><h4 class="return-title">📦 Gear Return — Friday Van Run</h4>`;returns.forEach(g=>{const mm=getMember(g.memberId);body+=`<div class="day-card return"><div class="dc-name">${mm?.name||''}</div><div class="dc-meta">${g.vendor} returns cleaned gear to fire hall</div></div>`});body+=`</div>`}
+  }else if(m.type==='settings'){
+    title='Notification Settings';const s=state.notifSettings;
+    const rows=[{key:'emailOnVacation',label:'Email on vacation scheduled'},{key:'emailOnGearCleaning',label:'Email on gear pickup scheduled'},{key:'emailOnReturn',label:'Email on gear return day reminder'},{key:'vacationAdded',label:'In-app notification for vacations'},{key:'gearScheduled',label:'In-app notification for gear cleanings'}];
+    body=rows.map(r=>`<div class="setting-row" onclick="toggleSetting('${r.key}')"><div class="checkbox ${s[r.key]?'checked':''}">${s[r.key]?icons.check:''}</div><span class="setting-label">${r.label}</span></div>`).join('');
+    body+=`<p class="form-hint">📧 Emails are sent via Resend through Netlify serverless functions.<br>📦 Return reminder emails are sent automatically on the return Friday.</p>`;
+  }else if(m.type==='export'){
+    title='Export Schedule';
+    body=`<p style="font-size:13px;color:#666;line-height:1.6;margin:0 0 20px">Download the current schedule.</p>
+    <button class="export-btn" onclick="exportCSV()"><span class="export-icon">📊</span><div><div class="export-title">Export as CSV (Excel)</div><div class="export-desc">Opens in Excel, Google Sheets</div></div></button>
+    <button class="export-btn" onclick="exportHTML()"><span class="export-icon">📄</span><div><div class="export-title">Export as Printable Report</div><div class="export-desc">HTML — print or save as PDF</div></div></button>
+    <button class="export-btn" onclick="exportJSON()"><span class="export-icon">💾</span><div><div class="export-title">Export as JSON Data</div><div class="export-desc">For importing into other systems</div></div></button>`;
+  }
+  return `<div class="modal-overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head"><h3>${title}</h3><button class="modal-close" onclick="closeModal()">${icons.x}</button></div>
+    <div class="modal-body">${body}</div></div></div>`;
+}
+
+// Live preview of gear schedule when adding vacation
+function updateVacPreview(){
+  const el=document.getElementById('vac-preview');if(!el)return;
+  const start=document.getElementById('vac-start')?.value;
+  const end=document.getElementById('vac-end')?.value;
+  if(!start||!end){el.innerHTML='';return}
+  const pickup=getPickupFriday(start);
+  const prep=getPrepByDate(pickup);
+  const ret=getReturnDate(pickup);
+  el.innerHTML=`<div class="schedule-preview">
+    <h4>🗓 Auto-Scheduled Gear Cleaning</h4>
+    <div class="schedule-row"><span class="schedule-dot" style="background:var(--orange)"></span><span class="schedule-date">${prettyDate(prep)}</span><span class="schedule-desc">Gear ready at usual doors by Thursday evening</span></div>
+    <div class="schedule-row"><span class="schedule-dot" style="background:var(--blue)"></span><span class="schedule-date">${prettyDate(pickup)}</span><span class="schedule-desc">Van picks up gear Friday morning</span></div>
+    <div class="schedule-row"><span class="schedule-dot" style="background:var(--red)"></span><span class="schedule-date">${prettyDate(start)}</span><span class="schedule-desc">Vacation starts</span></div>
+    <div class="schedule-row"><span class="schedule-dot" style="background:var(--red);opacity:.5"></span><span class="schedule-date">${prettyDate(end)}</span><span class="schedule-desc">Vacation ends</span></div>
+    <div class="schedule-row"><span class="schedule-dot" style="background:var(--purple)"></span><span class="schedule-date">${prettyDate(ret)}</span><span class="schedule-desc">Cleaned gear returned via Friday van run</span></div>
+  </div>`;
+}
+
+// ===== ACTIONS =====
+function openModal(type,data){state.modal={type,data};state.notifPanel=false;render()}
+function closeModal(){state.modal=null;render()}
+function setView(v){state.view=v;render()}
+function prevMonth(){if(state.month===0){state.month=11;state.year--}else state.month--;render()}
+function nextMonth(){if(state.month===11){state.month=0;state.year++}else state.month++;render()}
+function toggleNotifs(){state.notifPanel=!state.notifPanel;render()}
+function markAllRead(){state.notifications.forEach(n=>n.read=true);render()}
+function toggleSetting(key){state.notifSettings[key]=!state.notifSettings[key];render()}
+
+async function addVacation(){
+  const memberId=Number(document.getElementById('vac-member').value);
+  const start=document.getElementById('vac-start').value;
+  const end=document.getElementById('vac-end').value;
+  const notes=document.getElementById('vac-notes').value;
+  if(!memberId||!start||!end)return alert('Please fill in member, start and end dates.');
+
+  const vacId=genId(),gearId=genId();
+  const m=getMember(memberId);
+  const vendor=GEAR_VENDORS[Math.floor(Math.random()*GEAR_VENDORS.length)];
+  const pickupDate=getPickupFriday(start);
+  const prepByDate=getPrepByDate(pickupDate);
+  const returnDate=getReturnDate(pickupDate);
+
+  try{
+    await api('api-vacations','POST',{id:vacId,memberId,start,end,notes});
+    state.vacations.push({id:vacId,memberId,start,end,notes});
+    addNotification(`Vacation added for ${m?.name}: ${start} to ${end}`,'vacation');
+    showToast(`Vacation saved for ${m?.name}`,'success');
+
+    await api('api-gear','POST',{id:gearId,memberId,pickupDate,prepByDate,returnDate,vendor,status:'scheduled'});
+    state.gearCleanings.push({id:gearId,memberId,pickupDate,prepByDate,returnDate,vendor,status:'scheduled',returnNotified:false});
+    addNotification(`Gear pickup scheduled for ${m?.name}: ${pickupDate} (Fri) → Return: ${returnDate} (Fri)`,'gear');
+
+    if(state.notifSettings.emailOnVacation && m?.email){
+      sendEmail(m.email,`Vacation & Gear Cleaning Scheduled — ${start} to ${end}`,
+        `<div style="font-family:sans-serif;padding:20px;max-width:600px">
+          <h2 style="color:#C41E3A">🔥 Station Scheduler</h2>
+          <p>Hi ${m.name},</p>
+          <p>Your vacation has been scheduled from <strong>${prettyDate(start)}</strong> to <strong>${prettyDate(end)}</strong>.</p>
+          <h3 style="color:#2d7ff9;margin-top:24px">🔧 Bunker Gear Cleaning Schedule</h3>
+          <table style="border-collapse:collapse;width:100%;margin:12px 0">
+            <tr style="background:#fff8e1"><td style="padding:10px;border:1px solid #eee"><strong>📋 Gear Prep</strong></td><td style="padding:10px;border:1px solid #eee"><strong>${prettyDate(prepByDate)}</strong><br><span style="color:#888">Have your gear ready at the <strong>usual doors</strong> by Thursday evening</span></td></tr>
+            <tr style="background:#f0f6ff"><td style="padding:10px;border:1px solid #eee"><strong>🚐 Pickup</strong></td><td style="padding:10px;border:1px solid #eee"><strong>${prettyDate(pickupDate)}</strong><br><span style="color:#888">${vendor} picks up Friday morning</span></td></tr>
+            <tr style="background:#f3e5f5"><td style="padding:10px;border:1px solid #eee"><strong>📦 Return</strong></td><td style="padding:10px;border:1px solid #eee"><strong>${prettyDate(returnDate)}</strong><br><span style="color:#888">Cleaned gear returned to <strong>fire hall</strong> via Friday van run</span></td></tr>
+          </table>
+          ${notes?`<p><strong>Notes:</strong> ${notes}</p>`:''}
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <p style="color:#999;font-size:12px">Station Scheduler — Fire Department Vacation & Gear Tracker</p>
+        </div>`);
+    }
+    closeModal();
+  }catch(err){showToast('Failed to save: '+err.message,'error')}
+}
+
+async function addGear(){
+  const memberId=Number(document.getElementById('gear-member').value);
+  const pickupDate=document.getElementById('gear-pickup').value;
+  const vendor=document.getElementById('gear-vendor').value;
+  if(!memberId||!pickupDate)return alert('Please fill in member and pickup date.');
+  const gearId=genId(),m=getMember(memberId);
+  const prepByDate=getPrepByDate(pickupDate);
+  const returnDate=getReturnDate(pickupDate);
+  try{
+    await api('api-gear','POST',{id:gearId,memberId,pickupDate,prepByDate,returnDate,vendor,status:'scheduled'});
+    state.gearCleanings.push({id:gearId,memberId,pickupDate,prepByDate,returnDate,vendor,status:'scheduled',returnNotified:false});
+    addNotification(`Gear cleaning scheduled for ${m?.name}: Pickup ${pickupDate} → Return ${returnDate}`,'gear');
+    showToast(`Gear cleaning saved for ${m?.name}`,'success');
+    if(state.notifSettings.emailOnGearCleaning && m?.email){
+      sendEmail(m.email,`Gear Cleaning Scheduled — Pickup ${prettyDate(pickupDate)}`,
+        `<div style="font-family:sans-serif;padding:20px;max-width:600px">
+          <h2 style="color:#2d7ff9">🔧 Gear Cleaning Scheduled</h2>
+          <p>Hi ${m.name},</p>
+          <table style="border-collapse:collapse;width:100%;margin:12px 0">
+            <tr style="background:#fff8e1"><td style="padding:10px;border:1px solid #eee"><strong>📋 Gear Prep</strong></td><td style="padding:10px;border:1px solid #eee"><strong>${prettyDate(prepByDate)}</strong> — gear at usual doors by Thursday evening</td></tr>
+            <tr style="background:#f0f6ff"><td style="padding:10px;border:1px solid #eee"><strong>🚐 Pickup</strong></td><td style="padding:10px;border:1px solid #eee"><strong>${prettyDate(pickupDate)}</strong> — ${vendor} picks up Friday morning</td></tr>
+            <tr style="background:#f3e5f5"><td style="padding:10px;border:1px solid #eee"><strong>📦 Return</strong></td><td style="padding:10px;border:1px solid #eee"><strong>${prettyDate(returnDate)}</strong> — cleaned gear back at fire hall</td></tr>
+          </table>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <p style="color:#999;font-size:12px">Station Scheduler — Fire Department Vacation & Gear Tracker</p>
+        </div>`);
+    }
+    closeModal();
+  }catch(err){showToast('Failed to save: '+err.message,'error')}
+}
+
+async function addMember(){
+  const name=document.getElementById('mem-name').value.trim();
+  const rank=document.getElementById('mem-rank').value;
+  const shift=document.getElementById('mem-shift').value;
+  const email=document.getElementById('mem-email').value.trim();
+  if(!name||!email)return alert('Please fill in name and email.');
+  try{
+    const saved=await api('api-members','POST',{name,rank,shift,email});
+    state.members.push({id:saved.id,name:saved.name,rank:saved.rank,shift:saved.shift,email:saved.email});
+    addNotification(`New member added: ${name}`,'info');showToast(`${name} added to roster`,'success');closeModal();
+  }catch(err){showToast('Failed to add member: '+err.message,'error')}
+}
+
+async function deleteVacation(id){
+  try{
+    const v=state.vacations.find(x=>x.id===id);
+    await api(`api-vacations?id=${id}`,'DELETE');
+    state.vacations=state.vacations.filter(x=>x.id!==id);
+    if(v){
+      const gear=state.gearCleanings.find(g=>g.memberId===v.memberId&&g.pickupDate===getPickupFriday(v.start));
+      if(gear){await api(`api-gear?id=${gear.id}`,'DELETE');state.gearCleanings=state.gearCleanings.filter(g=>g.id!==gear.id)}
+    }
+    showToast('Vacation deleted','info');render();
+  }catch(err){showToast('Failed to delete: '+err.message,'error')}
+}
+
+// ===== EXPORTS =====
+function exportCSV(){
+  let csv="Type,Member,Prep By (Thu),Pickup (Fri),Return (Fri),Vacation Start,Vacation End,Vendor,Status,Notes\n";
+  state.vacations.forEach(v=>{const m=getMember(v.memberId);const g=state.gearCleanings.find(g=>g.memberId===v.memberId&&g.pickupDate===getPickupFriday(v.start));
+    csv+=`Combined,"${m?.name}",${g?.prepByDate||''},${g?.pickupDate||''},${g?.returnDate||''},${v.start},${v.end},${g?.vendor||''},${g?.status||''},${v.notes}\n`});
+  state.gearCleanings.filter(g=>!state.vacations.some(v=>v.memberId===g.memberId&&getPickupFriday(v.start)===g.pickupDate)).forEach(g=>{const m=getMember(g.memberId);
+    csv+=`Gear Only,"${m?.name}",${g.prepByDate},${g.pickupDate},${g.returnDate},,,,${g.vendor},${g.status},\n`});
+  download(csv,'text/csv',`fire-dept-schedule-${state.year}-${state.month+1}.csv`);showToast('CSV exported','success');closeModal();
+}
+function exportJSON(){
+  const data={members:state.members,vacations:state.vacations,gearCleanings:state.gearCleanings,exportDate:new Date().toISOString()};
+  download(JSON.stringify(data,null,2),'application/json',`fire-dept-schedule-${state.year}-${state.month+1}.json`);showToast('JSON exported','success');closeModal();
+}
+function exportHTML(){
+  let h=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fire Dept Schedule - ${MONTHS[state.month]} ${state.year}</title><style>body{font-family:sans-serif;padding:40px;color:#333;max-width:900px;margin:0 auto}h1{color:#C41E3A}table{border-collapse:collapse;width:100%;margin:20px 0}th,td{border:1px solid #ddd;padding:10px;text-align:left}th{background:#f5f5f5}@media print{body{padding:20px}}</style></head><body><h1>🔥 Fire Department Schedule — ${MONTHS[state.month]} ${state.year}</h1>
+  <h2>Vacations & Gear Cleanings</h2><table><tr><th>Member</th><th>Vacation</th><th>Prep (Thu)</th><th>Pickup (Fri)</th><th>Return (Fri)</th><th>Vendor</th><th>Notes</th></tr>`;
+  state.vacations.forEach(v=>{const m=getMember(v.memberId);const g=state.gearCleanings.find(g=>g.memberId===v.memberId&&g.pickupDate===getPickupFriday(v.start));
+    h+=`<tr><td>${m?.name||''}</td><td>${v.start} → ${v.end}</td><td>${g?.prepByDate||'—'}</td><td>${g?.pickupDate||'—'}</td><td>${g?.returnDate||'—'}</td><td>${g?.vendor||'—'}</td><td>${v.notes}</td></tr>`});
+  h+=`</table><p style="color:#999;font-size:12px">Generated ${new Date().toLocaleString()}</p></body></html>`;
+  download(h,'text/html',`fire-dept-schedule-${state.year}-${state.month+1}.html`);showToast('HTML report exported','success');closeModal();
+}
+function download(content,type,filename){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url)}
+
+// ===== INIT =====
+loadAllData();
+</script>
+</body>
+</html>
