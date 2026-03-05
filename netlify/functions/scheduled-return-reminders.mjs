@@ -1,8 +1,5 @@
 // This function runs automatically every Friday at 7:00 AM EST
-// via Netlify Scheduled Functions (cron)
-//
-// It checks for gear cleanings with a return date of today
-// and sends reminder emails to those firefighters.
+// Sends return reminders for gear cleanings due back today
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
@@ -77,12 +74,16 @@ function formatDate(dateStr) {
   return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
+const EMAIL_FOOTER = `<hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+<p style="color:#333;font-size:13px;margin:0"><strong>Anya Kisiel</strong><br>Fire Services Coordinator</p>
+<hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+<p style="color:#999;font-size:11px;margin:0">Station Scheduler — West Elgin · Dutton Dunwich · Southwold Fire Departments</p>`;
+
 export default async (req) => {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const today = new Date().toISOString().slice(0, 10);
   console.log(`[Scheduled] Checking gear returns for ${today}`);
 
   try {
-    // Find gear cleanings due for return today that haven't been notified
     const dueReturns = await supaFetch(
       `gear_cleanings?return_date=eq.${today}&return_notified=eq.false`
     );
@@ -94,15 +95,11 @@ export default async (req) => {
 
     console.log(`Found ${dueReturns.length} gear return(s) due today.`);
 
-    // Get all member details
     const memberIds = [...new Set(dueReturns.map(g => g.member_id))];
-    const members = await supaFetch(
-      `members?id=in.(${memberIds.join(',')})`
-    );
+    const members = await supaFetch(`members?id=in.(${memberIds.join(',')})`);
     const memberMap = {};
     members.forEach(m => memberMap[m.id] = m);
 
-    // Send return reminder emails and mark as notified
     for (const gear of dueReturns) {
       const member = memberMap[gear.member_id];
       if (!member || !member.email) {
@@ -119,8 +116,7 @@ export default async (req) => {
             <p>Hi ${member.name},</p>
             <p>Your bunker gear cleaned by <strong>${gear.vendor}</strong> is scheduled to be <strong>returned today (${formatDate(today)})</strong> via the Friday van run.</p>
             <p>Please ensure your gear is collected from the <strong>fire hall</strong> and checked back into service.</p>
-            <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-            <p style="color:#999;font-size:12px">Station Scheduler — Fire Department Vacation & Gear Tracker</p>
+            ${EMAIL_FOOTER}
           </div>`
         );
         console.log(`Email sent to ${member.name} (${member.email})`);
@@ -128,7 +124,6 @@ export default async (req) => {
         console.error(`Failed to email ${member.email}:`, emailErr.message);
       }
 
-      // Mark as notified regardless of email success to avoid spam retries
       try {
         await supaUpdate(`gear_cleanings?id=eq.${gear.id}`, { return_notified: true });
       } catch (updateErr) {
@@ -143,7 +138,6 @@ export default async (req) => {
   }
 };
 
-// Netlify Scheduled Function config
 // Runs every Friday at 7:00 AM Eastern (12:00 UTC)
 export const config = {
   schedule: "0 12 * * 5"

@@ -44,6 +44,11 @@ function formatDate(dateStr) {
   return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
+const EMAIL_FOOTER = `<hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+<p style="color:#333;font-size:13px;margin:0"><strong>Anya Kisiel</strong><br>Fire Services Coordinator</p>
+<hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+<p style="color:#999;font-size:11px;margin:0">Station Scheduler — West Elgin · Dutton Dunwich · Southwold Fire Departments</p>`;
+
 export default async (req) => {
   const today = new Date().toISOString().slice(0, 10);
   console.log(`[Scheduled] Checking gear preps for ${today}`);
@@ -73,15 +78,13 @@ export default async (req) => {
       try {
         await sendEmail(
           member.email,
-          `Gear Prep Reminder — Tonight`,
+          `Gear Prep Reminder — Pickup Tomorrow (Friday)`,
           `<div style="font-family:sans-serif;padding:20px;max-width:600px">
             <h2 style="color:#ff9800">📋 Gear Prep Reminder</h2>
             <p>Hi ${member.name},</p>
-            <p>This is a reminder to have your <strong>bunker gear ready at the usual doors by this evening (Thursday)</strong>.</p>
-            <p><strong>${gear.vendor}</strong> will pick it up <strong>tomorrow morning (Friday, ${formatDate(gear.pickup_date)})</strong>.</p>
-            <p>Your cleaned gear will be returned on <strong>${formatDate(gear.return_date)}</strong>.</p>
-            <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-            <p style="color:#999;font-size:12px">Station Scheduler — Fire Department Vacation & Gear Tracker</p>
+            <p>Pick up is Friday morning and gear needs to be ready for Thursday evening, by the usual doors for pick up.</p>
+            <p>Please see attached instructions for gear packing, and there will be posters hung up in the stations. If you have any questions, please reach out to your DCs or myself at any time.</p>
+            ${EMAIL_FOOTER}
           </div>`
         );
         console.log(`Prep reminder sent to ${member.name} (${member.email})`);
