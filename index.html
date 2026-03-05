@@ -405,7 +405,7 @@ function renderModal(){
   }else if(m.type==='member'){
     title='Add Crew Member';
     body=`<div class="form-group"><label>Full Name</label><input type="text" id="mem-name" placeholder="e.g. FF. Johnson"></div>
-    <div class="form-group"><label>Rank</label><select id="mem-rank">${["Firefighter","Engineer","Lieutenant","Captain","Battalion Chief"].map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Rank</label><select id="mem-rank">${["Probationary Firefighter","Firefighter","Captain","FPO","CTO","District Chief","Deputy Chief","Chief"].map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
     <div class="form-group"><label>Shift</label><select id="mem-shift">${["A","B","C"].map(s=>`<option value="${s}">Shift ${s}</option>`).join('')}</select></div>
     <div class="form-group"><label>Email</label><input type="email" id="mem-email" placeholder="name@fd.gov"></div>
     <div class="form-actions"><button class="form-btn ghost" onclick="closeModal()">Cancel</button><button class="form-btn primary" onclick="addMember()">Add Member</button></div>`;
