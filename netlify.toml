@@ -10,3 +10,7 @@
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+
+[[edge_functions]]
+  function = "geo-block"
+  path = "/*"
